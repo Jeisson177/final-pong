@@ -1,198 +1,118 @@
 LIBRARY IEEE;
-USE IEEE.STD_LOGIC_1164.ALL;
-USE IEEE.NUMERIC_STD.ALL;
+USE ieee.std_logic_1164.all;
+USE ieee.numeric_std.all;
+--------------------------------------------------------------------
+ENTITY Racquets_Movement1 IS
+ PORT (clk     :   IN    STD_LOGIC;
+       rst     :   IN    STD_LOGIC;
+		 ena     :   IN    STD_LOGIC;
+       up      :   IN    STD_LOGIC;
+		 down    :   IN    STD_LOGIC;
+       Rac_Pos:   OUT   STD_LOGIC_VECTOR(7 DOWNTO 0));
+END ENTITY Racquets_Movement1;
+--------------------------------------------------------------------
+ARCHITECTURE functional OF Racquets_Movement1 IS
+TYPE state IS (rest, Movement_1, Movement_2, Movement_3, Movement_4, Movement_5);
+SIGNAL pr_state, nx_state:state;
+SIGNAL Rac_Pos_s   : STD_LOGIC_VECTOR(7 DOWNTO 0);
+SIGNAL clk_racquet : STD_LOGIC;
 
-ENTITY PONG IS
-	PORT (	clk		:	IN		STD_LOGIC;
-				ena		:	IN		STD_LOGIC;
-				rst		:	IN		STD_LOGIC;
-				up_J1   	:	IN		STD_LOGIC;
-				up_J2	   :	IN		STD_LOGIC;
-				down_J1	:	IN		STD_LOGIC;
-				down_J2	:	IN		STD_LOGIC;
-			   score1   :	OUT	STD_LOGIC_VECTOR(6 DOWNTO 0);
-			   score2   :	OUT	STD_LOGIC_VECTOR(6 DOWNTO 0);
-    Columnas_matriz1 :	OUT	STD_LOGIC_VECTOR(7  DOWNTO 0);
-	  Columnas_matriz2:	OUT	STD_LOGIC_VECTOR(7  DOWNTO 0);
-		Filas_matriz1	:	OUT	STD_LOGIC_VECTOR(7  DOWNTO 0);
-		Filas_matriz2	:	OUT	STD_LOGIC_VECTOR(7  DOWNTO 0));
-END ENTITY;
--------------------------------------------------------------------------------------
-ARCHITECTURE rtl OF PONG IS
-	TYPE Tablero IS ARRAY (15 DOWNTO 0) OF STD_LOGIC_VECTOR(7 DOWNTO 0);
-	SIGNAL juego,ZEROS,game	:Tablero;
-	SIGNAL Rac1_Pos			:	STD_LOGIC_VECTOR(7 DOWNTO 0);
-	SIGNAL Rac2_Pos			:	STD_LOGIC_VECTOR(7 DOWNTO 0);
-	SIGNAL Position_Ballx   :	INTEGER;
-	SIGNAL Position_Bally   :	INTEGER;
-	SIGNAL Goal_1				:	STD_LOGIC;
-	SIGNAL Goal_2				:	STD_LOGIC;
-	SIGNAL marcador1_bin    :  STD_LOGIC_VECTOR(3 DOWNTO 0);
-	SIGNAL marcador2_bin    :  STD_LOGIC_VECTOR(3 DOWNTO 0);
-	SIGNAL clk_tablero		:	STD_LOGIC;
-	SIGNAL tick_speed       :  STD_LOGIC;
-
-	TYPE state IS (Initial, Desarrollo);
-	SIGNAL pr_state, nx_state: state;
--------------------------------------------------------------------------------------
 BEGIN
 
+ CLOCK:	ENTITY work.univ_bin_counter
+		GENERIC MAP(N => 24)
+		PORT MAP(
+					clk		=> clk,
+					rst		=> rst,
+					ena		=> ena,
+					syn_clr	=> '0',
+					load		=> '0',
+					up			=> '1',
+					d			=> "100110001001011010000000",
+					max_tick	=>	clk_racquet
+					);
 	
-	BALL:ENTITY work.Ball_Movement
-	PORT MAP(	clk 		=> clk,
-					ena 		=> ena,
-					rst 		=> rst,
-					Goal_1	=>	Goal_1,
-					Goal_2	=> Goal_2,
-					Rac1_Pos => Rac1_Pos,
-					Rac2_Pos => Rac2_Pos,
-			Position_Ballx => Position_Ballx,
-			Position_Bally => Position_Bally);
+	PROCESS (rst,clk_racquet)
+	BEGIN
+		IF (rst='1') THEN
+			pr_state <= rest;
+		ELSIF (rising_edge(clk_racquet))THEN
+				pr_state <= nx_state;
+				Rac_Pos <= Rac_Pos_s;
+		END IF;
+	END PROCESS;
+	
+PROCESS (up, down, pr_state)
+	BEGIN
+	CASE pr_state IS
+	WHEN rest =>
+	   IF(up = '1') THEN
+		Rac_Pos_s <= "00000111";
+		nx_state <= rest;
+      ELSE
+      Rac_Pos_s <= "00001110";
+		nx_state <= rest;
+      END IF;
 		
-	
-	
-	timer_fps: ENTITY work.univ_bin_counter
-		GENERIC MAP(	N		=>	18	)
-		PORT MAP(	clk		=>	clk,
-						rst		=> rst,
-						ena		=>	ena,
-						syn_clr	=>	'0',
-						load		=>	'0',
-						up			=> '1',
-						d			=> "100100100111110000",
-						max_tick	=> clk_tablero	);
-
-	
-	
-	Matriz_1: ENTITY work.Visualization
-		PORT MAP(	clk		    =>	clk,
-						ena		    =>	ena,
-						rst		    =>	rst,
-				      columna_0    =>	juego(0),
-						columna_1    =>	juego(1),
-						columna_2    =>	juego(2),
-						columna_3    =>	juego(3),
-						columna_4    =>	juego(4),
-						columna_5    =>	juego(5),
-						columna_6    =>	juego(6),
-						columna_7    =>	juego(7),
-						Columna      =>	Columnas_matriz1,
-						Fila         =>	Filas_matriz1);
-	
-	
-	Matriz_2: ENTITY work.Visualization
-		PORT MAP(	clk		    =>	clk,
-						ena		    =>	ena,
-						rst		    =>   rst,
-						columna_0    =>	juego(8),
-						columna_1    =>	juego(9),
-						columna_2    =>	juego(10),
-						columna_3    =>	juego(11),
-						columna_4    =>	juego(12),
-						columna_5    =>	juego(13),
-						columna_6    =>	juego(14),
-						columna_7    =>	juego(15),
-						Columna      =>	Columnas_matriz2,
-						Fila         =>	Filas_matriz2);
-	
-	
-	
-	Racquet1: ENTITY work.Racquets_Movement1
-		PORT MAP (	clk		=>	clk,
-						rst		=>	rst,
-						ena      => ena,
-						up       => up_J1,
-						down     => down_J1,
-						Rac_Pos  => Rac1_Pos);
-						
-	
-	
-	Racquet2: ENTITY work.Racquets_Movement1
-		PORT MAP (	clk		=>	clk,
-						rst		=>	rst,
-						ena      => ena,
-						up       => up_J2,
-						down     => down_J2,
-						Rac_Pos  => Rac2_Pos);
-	
-	
-   Score:    ENTITY work.Score
-	PORT MAP (		clk		=>	clk,
-						rst		=>	rst,
-						Goal_1	=> Goal_1,
-						Goal_2   => Goal_2,
-					marcador1   => marcador1_bin,
-				   marcador2   => marcador2_bin);	
-						
-	
-	
-	bin_to_sseg_1: ENTITY work.bin_to_sseg
-	PORT MAP (		bin  => marcador1_bin,
-						sseg => score1);
-						
-	
-	
-	bin_to_sseg_2: ENTITY work.bin_to_sseg
-	PORT MAP (		bin  => marcador2_bin,
-						sseg => score2);				
-						
-		
-		timer_for_speed: ENTITY work.univ_bin_counter
-	GENERIC MAP(	N 			=> 28)
-	PORT MAP (		clk		=>	clk,
-						rst		=>	rst,
-						ena		=>	ena,
-						syn_clr	=>	'0',
-						load		=>	'0',
-						d			=> "0101111101011110000100000000",
-						max_tick => tick_speed);
-
-ZEROS	<=( 
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111");		
-		
-		
-		PROCESS(rst,ena,clk,clk_tablero,ZEROS)
-			BEGIN
-				IF(rst='1') THEN
-					juego <= ZEROS;
-				ELSIF(rising_edge(clk)) THEN
-					IF(clk_tablero = '1') THEN
-						pr_state <= nx_state;
-						juego <= game;
-					END IF;
+			WHEN Movement_1 =>
+				IF (up = '1') THEN
+					Rac_Pos_s 	<= "00000111";
+					nx_state	<=	rest;
+				ELSIF(down = '1') THEN
+					Rac_Pos_s	<= "00011100";
+					nx_state	<= Movement_2;
+				ELSE
+					Rac_Pos_s	<=	"00001110";
+					nx_state	<=	Movement_1;
 				END IF;
-			END PROCESS;
-
-	
-	PROCESS (pr_state,Rac1_Pos,Rac2_Pos,juego,Position_Ballx,Position_Bally,ZEROS)
-		BEGIN
-			CASE pr_state IS
-				WHEN Initial =>
-					game <= ZEROS;
-					nx_state<= Desarrollo;
-				WHEN Desarrollo =>
-					game <=(OTHERS => "11111111");
-					game(0) <=  Rac1_Pos;
-					game(15)<=  Rac2_Pos;
-					game(Position_Ballx)(Position_Bally) <= '1';
-					nx_state <= Initial;
+				
+			WHEN Movement_2	=>
+				IF	(up = '1') THEN
+					Rac_Pos_s	<=	"00001110";
+					nx_state	<=	Movement_1;
+				ELSIF	(down = '1') THEN
+					Rac_Pos_s	<=	"00111000";
+					nx_state	<=	Movement_3;
+				ELSE
+					Rac_Pos_s	<=	"00011100";
+					nx_state	<=	Movement_2;
+				END IF;
+			
+			WHEN Movement_3 =>
+				IF	( up = '1') THEN
+					Rac_Pos_s	<=	"00011100";
+					nx_state	<=	Movement_2;
+				ELSIF	(down = '1') THEN
+					Rac_Pos_s	<=	"01110000";
+					nx_state	<=	Movement_4;
+				ELSE
+					Rac_Pos_s	<=	"00111000";
+					nx_state	<=	Movement_3;
+				END IF;
+			
+			WHEN Movement_4 =>
+				IF	(up = '1') THEN
+					Rac_Pos_s	<=	"00111000";
+					nx_state	<=	Movement_3;
+				ELSIF	(down = '1') THEN
+					Rac_Pos_s	<=	"11100000";
+					nx_state	<=	Movement_5;
+				ELSE
+					Rac_Pos_s	<=	"01110000";
+					nx_state	<=	Movement_4;
+				END IF;
+			
+			WHEN Movement_5 =>
+				IF	(up = '1') THEN
+					Rac_Pos_s	<=	"01110000";
+					nx_state	<=	Movement_4;
+				ELSE
+					Rac_Pos_s	<=	"11100000";
+					nx_state	<=	Movement_5;
+				END IF;
 			END CASE;
-		END PROCESS;		
-
-
+		END PROCESS;
 END ARCHITECTURE;
+
+
+
