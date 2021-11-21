@@ -1,198 +1,287 @@
 LIBRARY IEEE;
-USE IEEE.STD_LOGIC_1164.ALL;
-USE IEEE.NUMERIC_STD.ALL;
+USE ieee.std_logic_1164.all;
+USE ieee.numeric_std.all;
 
-ENTITY PONG IS
-	PORT (	clk		:	IN		STD_LOGIC;
-				ena		:	IN		STD_LOGIC;
-				rst		:	IN		STD_LOGIC;
-				up_J1   	:	IN		STD_LOGIC;
-				up_J2	   :	IN		STD_LOGIC;
-				down_J1	:	IN		STD_LOGIC;
-				down_J2	:	IN		STD_LOGIC;
-			   score1   :	OUT	STD_LOGIC_VECTOR(6 DOWNTO 0);
-			   score2   :	OUT	STD_LOGIC_VECTOR(6 DOWNTO 0);
-    Columnas_matriz1 :	OUT	STD_LOGIC_VECTOR(7  DOWNTO 0);
-	  Columnas_matriz2:	OUT	STD_LOGIC_VECTOR(7  DOWNTO 0);
-		Filas_matriz1	:	OUT	STD_LOGIC_VECTOR(7  DOWNTO 0);
-		Filas_matriz2	:	OUT	STD_LOGIC_VECTOR(7  DOWNTO 0));
-END ENTITY;
--------------------------------------------------------------------------------------
-ARCHITECTURE rtl OF PONG IS
-	TYPE Tablero IS ARRAY (15 DOWNTO 0) OF STD_LOGIC_VECTOR(7 DOWNTO 0);
-	SIGNAL juego,ZEROS,game	:Tablero;
-	SIGNAL Rac1_Pos			:	STD_LOGIC_VECTOR(7 DOWNTO 0);
-	SIGNAL Rac2_Pos			:	STD_LOGIC_VECTOR(7 DOWNTO 0);
-	SIGNAL Position_Ballx   :	INTEGER;
-	SIGNAL Position_Bally   :	INTEGER;
-	SIGNAL Goal_1				:	STD_LOGIC;
-	SIGNAL Goal_2				:	STD_LOGIC;
-	SIGNAL marcador1_bin    :  STD_LOGIC_VECTOR(3 DOWNTO 0);
-	SIGNAL marcador2_bin    :  STD_LOGIC_VECTOR(3 DOWNTO 0);
-	SIGNAL clk_tablero		:	STD_LOGIC;
-	SIGNAL tick_speed       :  STD_LOGIC;
+ENTITY Ball_Movement IS 
+ PORT(  clk           :  IN  STD_LOGIC;
+        rst           :  IN  STD_LOGIC;
+		  ena 			 :  IN  STD_LOGIC;
+		  Rac1_Pos      :  IN  STD_LOGIC_VECTOR(7 DOWNTO 0);
+		  Rac2_Pos      :  IN  STD_LOGIC_VECTOR(7 DOWNTO 0);
+		  Position_Ballx:  OUT INTEGER:=8;
+		  Position_Bally:  OUT INTEGER:=4;
+		  Goal_1        :  OUT STD_LOGIC:='0';
+		  Goal_2        :  OUT STD_LOGIC:='0');
+END ENTITY;		  
 
-	TYPE state IS (Initial, Desarrollo);
-	SIGNAL pr_state, nx_state: state;
--------------------------------------------------------------------------------------
+ARCHITECTURE rtl OF Ball_Movement IS
+TYPE state IS(Inicial, Arriba_derecha, Arriba_izquierda, Abajo_izquierda, Abajo_derecha);
+SIGNAL pr_state, nx_state:state;
+SIGNAL Pos_x                  :  INTEGER;
+SIGNAL Pos_y                  :  INTEGER;
+SIGNAL clk_ball               :  STD_LOGIC;
+SIGNAL Position_Ballx_s 		:	INTEGER;
+SIGNAL Position_Bally_s 		:	INTEGER;
+SIGNAL Goal_1_s					:	STD_LOGIC;
+SIGNAL Goal_2_s					:	STD_LOGIC;
+SIGNAL adder_x						:	INTEGER;
+SIGNAL adder_y						:	INTEGER;
+SIGNAL rest_x						:	INTEGER;
+SIGNAL rest_y						:	INTEGER;
+
 BEGIN
-
-	
-	BALL:ENTITY work.Ball_Movement
-	PORT MAP(	clk 		=> clk,
-					ena 		=> ena,
-					rst 		=> rst,
-					Goal_1	=>	Goal_1,
-					Goal_2	=> Goal_2,
-					Rac1_Pos => Rac1_Pos,
-					Rac2_Pos => Rac2_Pos,
-			Position_Ballx => Position_Ballx,
-			Position_Bally => Position_Bally);
-		
-	
-	
-	timer_fps: ENTITY work.univ_bin_counter
-		GENERIC MAP(	N		=>	18	)
+ rest_x  <= Position_Ballx_s  -1;
+ rest_y  <= Position_Bally_s  -1;
+ adder_x <= Position_Ballx_s  +1;
+ adder_y <= Position_Bally_s  +1;
+ 
+ clock: ENTITY work.univ_bin_counter
+		GENERIC MAP(N		=>	24	)
 		PORT MAP(	clk		=>	clk,
 						rst		=> rst,
 						ena		=>	ena,
 						syn_clr	=>	'0',
 						load		=>	'0',
 						up			=> '1',
-						d			=> "100100100111110000",
-						max_tick	=> clk_tablero	);
-
-	
-	
-	Matriz_1: ENTITY work.Visualization
-		PORT MAP(	clk		    =>	clk,
-						ena		    =>	ena,
-						rst		    =>	rst,
-				      columna_0    =>	juego(0),
-						columna_1    =>	juego(1),
-						columna_2    =>	juego(2),
-						columna_3    =>	juego(3),
-						columna_4    =>	juego(4),
-						columna_5    =>	juego(5),
-						columna_6    =>	juego(6),
-						columna_7    =>	juego(7),
-						Columna      =>	Columnas_matriz1,
-						Fila         =>	Filas_matriz1);
-	
-	
-	Matriz_2: ENTITY work.Visualization
-		PORT MAP(	clk		    =>	clk,
-						ena		    =>	ena,
-						rst		    =>   rst,
-						columna_0    =>	juego(8),
-						columna_1    =>	juego(9),
-						columna_2    =>	juego(10),
-						columna_3    =>	juego(11),
-						columna_4    =>	juego(12),
-						columna_5    =>	juego(13),
-						columna_6    =>	juego(14),
-						columna_7    =>	juego(15),
-						Columna      =>	Columnas_matriz2,
-						Fila         =>	Filas_matriz2);
-	
-	
-	
-	Racquet1: ENTITY work.Racquets_Movement1
-		PORT MAP (	clk		=>	clk,
-						rst		=>	rst,
-						ena      => ena,
-						up       => up_J1,
-						down     => down_J1,
-						Rac_Pos  => Rac1_Pos);
+						d			=> "100110001001011010000000",
+						max_tick	=> clk_ball	);
 						
-	
-	
-	Racquet2: ENTITY work.Racquets_Movement1
-		PORT MAP (	clk		=>	clk,
-						rst		=>	rst,
-						ena      => ena,
-						up       => up_J2,
-						down     => down_J2,
-						Rac_Pos  => Rac2_Pos);
-	
-	
-   Score:    ENTITY work.Score
-	PORT MAP (		clk		=>	clk,
-						rst		=>	rst,
-						Goal_1	=> Goal_1,
-						Goal_2   => Goal_2,
-					marcador1   => marcador1_bin,
-				   marcador2   => marcador2_bin);	
-						
-	
-	
-	bin_to_sseg_1: ENTITY work.bin_to_sseg
-	PORT MAP (		bin  => marcador1_bin,
-						sseg => score1);
-						
-	
-	
-	bin_to_sseg_2: ENTITY work.bin_to_sseg
-	PORT MAP (		bin  => marcador2_bin,
-						sseg => score2);				
-						
-		
-		timer_for_speed: ENTITY work.univ_bin_counter
-	GENERIC MAP(	N 			=> 28)
-	PORT MAP (		clk		=>	clk,
-						rst		=>	rst,
-						ena		=>	ena,
-						syn_clr	=>	'0',
-						load		=>	'0',
-						d			=> "0101111101011110000100000000",
-						max_tick => tick_speed);
+Position_Ballx <= Position_Ballx_s;
+Position_Bally <= Position_Bally_s;
 
-ZEROS	<=( 
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111");		
-		
-		
-		PROCESS(rst,ena,clk,clk_tablero,ZEROS)
-			BEGIN
-				IF(rst='1') THEN
-					juego <= ZEROS;
-				ELSIF(rising_edge(clk)) THEN
-					IF(clk_tablero = '1') THEN
-						pr_state <= nx_state;
-						juego <= game;
-					END IF;
-				END IF;
-			END PROCESS;
+PROCESS (rst,clk,clk_ball)
+	BEGIN
+		IF (rst='1') THEN
+			pr_state <= Inicial;
+		ELSIF (rising_edge(clk))THEN
+			IF(clk_ball = '1') THEN
+				IF(ena = '1') THEN
+					pr_state <=  nx_state;
+					Goal_1 <= Goal_1_s;
+					Goal_2 <= Goal_2_s;
+					Position_Ballx_s <= Pos_x;
+					Position_Bally_s <= Pos_y;
+			END IF;
+		END IF;
+	 END IF;
+	END PROCESS;
 
-	
-	PROCESS (pr_state,Rac1_Pos,Rac2_Pos,juego,Position_Ballx,Position_Bally,ZEROS)
-		BEGIN
-			CASE pr_state IS
-				WHEN Initial =>
-					game <= ZEROS;
-					nx_state<= Desarrollo;
-				WHEN Desarrollo =>
-					game <=(OTHERS => "11111111");
-					game(0) <=  Rac1_Pos;
-					game(15)<=  Rac2_Pos;
-					game(Position_Ballx)(Position_Bally) <= '1';
-					nx_state <= Initial;
-			END CASE;
-		END PROCESS;		
+ PROCESS (pr_state,Position_Ballx_s,Position_Bally_s,Rac1_Pos,Rac2_Pos,adder_x,adder_y,rest_x,rest_y)
+  BEGIN	
+	CASE pr_state IS
+	  WHEN Inicial =>
+	    Pos_x <= 9;
+		 Pos_y <= 5;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Arriba_izquierda;
+		 
+     WHEN Arriba_izquierda =>
+	    IF(Position_Ballx_s = 0) THEN
+		   Pos_x <= Position_Ballx_s;
+			Pos_y <= Position_Bally_s;
+		   Goal_1_s <= '0';
+			Goal_2_s <= '1';
+			nx_state <= Inicial;
+		 ELSIF (Position_Ballx_s = 1) THEN
+		  IF((Rac1_Pos(Position_Bally_s) = '1') AND (Rac1_Pos(rest_y) = '1') AND (Rac1_Pos(adder_y) = '1')) THEN
+		 Pos_x <= adder_x;
+		 Pos_y <= rest_y; 
+		 Goal_1_s <= '0'; 
+		 Goal_2_s <= '0'; 
+		 nx_state <= Arriba_derecha;
+		  ELSIF((Rac1_Pos(Position_Bally_s) = '0') AND (Rac1_Pos(rest_y) = '1') AND (Rac1_Pos(adder_y) = '0')) THEN
+	    Pos_x <= adder_x;
+		 Pos_y <= adder_y; 
+		 Goal_1_s <= '0'; 
+		 Goal_2_s <= '0'; 
+		 nx_state <= Abajo_derecha;
+		  ELSIF((Rac1_Pos(Position_Bally_s) = '1') AND (Rac1_Pos(rest_y) = '1') AND (Rac1_Pos(adder_y) = '0')) THEN
+		 Pos_x <= adder_x;
+		 Pos_y <= rest_y; 
+		 Goal_1_s <= '0'; 
+		 Goal_2_s <= '0'; 
+		 nx_state <= Arriba_derecha;
+		 ELSE
+		 Pos_x <= rest_x;
+		 Pos_y <= rest_y;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Arriba_izquierda;
+		  END IF;
+		 ELSE
+		 IF (Position_Bally_s = 0) THEN
+		 Pos_x <= rest_x;
+		 Pos_y <= adder_y;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Abajo_izquierda;
+       ELSE
+		 Pos_x <= rest_x;
+		 Pos_y <= rest_y;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Arriba_izquierda;
+		 END IF;
+		 END IF;
+	------------------------------------------------------------
+		 
+	 WHEN Arriba_derecha =>
+	   IF(Position_Ballx_s = 15) THEN
+		  Pos_x <= Position_Ballx_s;
+		  Pos_y <= Position_Bally_s;
+		  Goal_1_s <= '1';
+		  Goal_2_s <= '0';
+		  nx_state <= Inicial;
+	  ELSIF(Position_Ballx_s = 14) THEN
+	    IF((Rac2_Pos(Position_Bally_s) = '1') AND (Rac2_Pos(rest_y) = '1') AND (Rac2_Pos(adder_y) = '1')) THEN
+		 Pos_x <= rest_x;
+		 Pos_y <= rest_y; 
+		 Goal_1_s <= '0'; 
+		 Goal_2_s <= '0'; 
+		 nx_state <= Arriba_izquierda;
+		  ELSIF((Rac2_Pos(Position_Bally_s) = '0') AND (Rac2_Pos(rest_y) = '1') AND (Rac2_Pos(adder_y) = '0')) THEN
+	    Pos_x <= rest_x;
+		 Pos_y <= adder_y; 
+		 Goal_1_s <= '0'; 
+		 Goal_2_s <= '0'; 
+		 nx_state <= Abajo_izquierda;
+		  ELSIF((Rac2_Pos(Position_Bally_s) = '1') AND (Rac2_Pos(rest_y) = '1') AND (Rac2_Pos(adder_y) = '0')) THEN
+		 Pos_x <= rest_x;
+		 Pos_y <= rest_y; 
+		 Goal_1_s <= '0'; 
+		 Goal_2_s <= '0'; 
+		 nx_state <= Arriba_izquierda;
+		  ELSE
+		 Pos_x <= adder_x;
+		 Pos_y <= rest_y;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Arriba_derecha;
+		  END IF;
+		 ELSE
+		 IF (Position_Bally_s = 0) THEN
+		 Pos_x <= adder_x;
+		 Pos_y <= adder_y;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Abajo_derecha;
+		 ELSE
+		 Pos_x <= adder_x;
+		 Pos_y <= rest_y;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Arriba_derecha;
+		 END IF;
+		 END IF;
+		 --------------------------------------
+		 
+	WHEN Abajo_izquierda =>
+	   IF(Position_Ballx_s = 0) THEN
+		   Pos_x <= Position_Ballx_s;
+			Pos_y <= Position_Bally_s;
+		   Goal_1_s <= '0';
+			Goal_2_s <= '1';
+			nx_state <= Inicial;
+	   ELSIF (Position_Ballx_s = 1) THEN
+		  IF((Rac1_Pos(Position_Bally_s) = '1') AND (Rac1_Pos(rest_y) = '1') AND (Rac1_Pos(adder_y) = '1')) THEN
+		 Pos_x <= adder_x;
+		 Pos_y <= adder_y; 
+		 Goal_1_s <= '0'; 
+		 Goal_2_s <= '0'; 
+		 nx_state <= Abajo_derecha;
+		  
+		  ELSIF((Rac1_Pos(Position_Bally_s) = '0') AND (Rac1_Pos(rest_y) = '0') AND (Rac1_Pos(adder_y) = '1')) THEN
+	    Pos_x <= adder_x;
+		 Pos_y <= rest_y; 
+		 Goal_1_s <= '0'; 
+		 Goal_2_s <= '0'; 
+		 nx_state <= Arriba_derecha;
+		  
+		  ELSIF((Rac1_Pos(Position_Bally_s) = '1') AND (Rac1_Pos(rest_y) = '0') AND (Rac1_Pos(adder_y) = '1')) THEN
+		 Pos_x <= adder_x;
+		 Pos_y <= rest_y; 
+		 Goal_1_s <= '0'; 
+		 Goal_2_s <= '0'; 
+		 nx_state <= Arriba_derecha;
+		 ELSE
+		 Pos_x <= rest_x;
+		 Pos_y <= adder_y;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Abajo_izquierda;
+		  END IF;
+		 ELSE
+		 IF (Position_Bally_s = 7) THEN
+		 Pos_x <= rest_x;
+		 Pos_y <= rest_y;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Arriba_izquierda;	
+		 ELSE
+		 Pos_x <= rest_x;
+		 Pos_y <= adder_y;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Abajo_izquierda;
+		 END IF;
+		 END IF;
+	------------------------------------------------------------	
+		   
+	  WHEN Abajo_derecha =>
+	   IF(Position_Ballx_s = 15) THEN
+		   Pos_x <= Position_Ballx_s;
+			Pos_y <= Position_Bally_s;
+		   Goal_1_s <= '1';
+			Goal_2_s <= '0';
+			nx_state <= Inicial;	
+	   ELSIF (Position_Ballx_s = 14) THEN
+		  IF((Rac1_Pos(Position_Bally_s) = '1') AND (Rac1_Pos(rest_y) = '1') AND (Rac1_Pos(adder_y) = '1')) THEN
+		 Pos_x <= rest_x;
+		 Pos_y <= adder_y; 
+		 Goal_1_s <= '0'; 
+		 Goal_2_s <= '0'; 
+		 nx_state <= Abajo_izquierda;
+		  
+		  ELSIF((Rac1_Pos(Position_Bally_s) = '0') AND (Rac1_Pos(rest_y) = '0') AND (Rac1_Pos(adder_y) = '1')) THEN
+	    Pos_x <= rest_x;
+		 Pos_y <= rest_y; 
+		 Goal_1_s <= '0'; 
+		 Goal_2_s <= '0'; 
+		 nx_state <= Arriba_izquierda;
+		  
+		  ELSIF((Rac1_Pos(Position_Bally_s) = '1') AND (Rac1_Pos(rest_y) = '0') AND (Rac1_Pos(adder_y) = '1')) THEN
+		 Pos_x <= rest_x;
+		 Pos_y <= rest_y; 
+		 Goal_1_s <= '0'; 
+		 Goal_2_s <= '0'; 
+		 nx_state <= Arriba_izquierda;
+		 ELSE
+		 Pos_x <= adder_x;
+		 Pos_y <= adder_y;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Abajo_derecha;
+		  END IF;
+		 ELSE
+		 IF (Position_Bally_s = 7) THEN
+		 Pos_x <= adder_x;
+		 Pos_y <= rest_y;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Arriba_derecha;	
+		 ELSE
+		 Pos_x <= adder_x;
+		 Pos_y <= adder_y;
+		 Goal_1_s <= '0';
+		 Goal_2_s <= '0';
+		 nx_state <= Abajo_derecha;
+		 END IF;
+		 END IF;
+	------------------------------------------------------------	 
+	    END CASE;
+    END PROCESS;
+END ARCHITECTURE;  
 
 
-END ARCHITECTURE;
+
