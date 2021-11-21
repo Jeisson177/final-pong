@@ -1,198 +1,88 @@
+
 LIBRARY IEEE;
-USE IEEE.STD_LOGIC_1164.ALL;
-USE IEEE.NUMERIC_STD.ALL;
+USE IEEE.STD_LOGIC_1164.all;
 
-ENTITY PONG IS
-	PORT (	clk		:	IN		STD_LOGIC;
-				ena		:	IN		STD_LOGIC;
-				rst		:	IN		STD_LOGIC;
-				up_J1   	:	IN		STD_LOGIC;
-				up_J2	   :	IN		STD_LOGIC;
-				down_J1	:	IN		STD_LOGIC;
-				down_J2	:	IN		STD_LOGIC;
-			   score1   :	OUT	STD_LOGIC_VECTOR(6 DOWNTO 0);
-			   score2   :	OUT	STD_LOGIC_VECTOR(6 DOWNTO 0);
-    Columnas_matriz1 :	OUT	STD_LOGIC_VECTOR(7  DOWNTO 0);
-	  Columnas_matriz2:	OUT	STD_LOGIC_VECTOR(7  DOWNTO 0);
-		Filas_matriz1	:	OUT	STD_LOGIC_VECTOR(7  DOWNTO 0);
-		Filas_matriz2	:	OUT	STD_LOGIC_VECTOR(7  DOWNTO 0));
+ENTITY Visualization IS
+PORT	(	      clk			:	IN		STD_LOGIC;
+				   rst			:	IN		STD_LOGIC;
+				   ena			:	IN		STD_LOGIC;
+			columna_0         :  IN 	STD_LOGIC_VECTOR(7 DOWNTO 0);
+			columna_1         :  IN 	STD_LOGIC_VECTOR(7 DOWNTO 0);
+		   columna_2         :  IN 	STD_LOGIC_VECTOR(7 DOWNTO 0);
+		   columna_3         :  IN 	STD_LOGIC_VECTOR(7 DOWNTO 0);
+			columna_4         :  IN 	STD_LOGIC_VECTOR(7 DOWNTO 0);
+			columna_5         :  IN 	STD_LOGIC_VECTOR(7 DOWNTO 0);
+			columna_6         :  IN 	STD_LOGIC_VECTOR(7 DOWNTO 0);
+			columna_7         :  IN 	STD_LOGIC_VECTOR(7 DOWNTO 0);
+			  Columna         :  OUT   STD_LOGIC_VECTOR(7 DOWNTO 0);
+				  Fila         :  OUT   STD_LOGIC_VECTOR(7 DOWNTO 0));
 END ENTITY;
--------------------------------------------------------------------------------------
-ARCHITECTURE rtl OF PONG IS
-	TYPE Tablero IS ARRAY (15 DOWNTO 0) OF STD_LOGIC_VECTOR(7 DOWNTO 0);
-	SIGNAL juego,ZEROS,game	:Tablero;
-	SIGNAL Rac1_Pos			:	STD_LOGIC_VECTOR(7 DOWNTO 0);
-	SIGNAL Rac2_Pos			:	STD_LOGIC_VECTOR(7 DOWNTO 0);
-	SIGNAL Position_Ballx   :	INTEGER;
-	SIGNAL Position_Bally   :	INTEGER;
-	SIGNAL Goal_1				:	STD_LOGIC;
-	SIGNAL Goal_2				:	STD_LOGIC;
-	SIGNAL marcador1_bin    :  STD_LOGIC_VECTOR(3 DOWNTO 0);
-	SIGNAL marcador2_bin    :  STD_LOGIC_VECTOR(3 DOWNTO 0);
-	SIGNAL clk_tablero		:	STD_LOGIC;
-	SIGNAL tick_speed       :  STD_LOGIC;
 
-	TYPE state IS (Initial, Desarrollo);
-	SIGNAL pr_state, nx_state: state;
--------------------------------------------------------------------------------------
+ARCHITECTURE rtl OF Visualization  IS
+	TYPE state IS (state0, state1, state2, state3, state4, state5, state6, state7);
+	SIGNAL pr_state, nx_state:	state;
+	SIGNAL clk_visualization : STD_LOGIC;
+
 BEGIN
 
-	
-	BALL:ENTITY work.Ball_Movement
-	PORT MAP(	clk 		=> clk,
-					ena 		=> ena,
-					rst 		=> rst,
-					Goal_1	=>	Goal_1,
-					Goal_2	=> Goal_2,
-					Rac1_Pos => Rac1_Pos,
-					Rac2_Pos => Rac2_Pos,
-			Position_Ballx => Position_Ballx,
-			Position_Bally => Position_Bally);
-		
-	
-	
-	timer_fps: ENTITY work.univ_bin_counter
-		GENERIC MAP(	N		=>	18	)
-		PORT MAP(	clk		=>	clk,
-						rst		=> rst,
-						ena		=>	ena,
-						syn_clr	=>	'0',
-						load		=>	'0',
-						up			=> '1',
-						d			=> "100100100111110000",
-						max_tick	=> clk_tablero	);
+clock: ENTITY work.univ_bin_counter
+       GENERIC MAP(N  => 16)
+	    PORT MAP (
+				clk		=>clk,
+				rst		=>rst,
+				load		=>'0',
+				d			=>"1100001101010000",
+				ena		=>'1',
+				syn_clr	=>'0',
+				up			=>'1',
+				max_tick	=>clk_visualization);
 
-	
-	
-	Matriz_1: ENTITY work.Visualization
-		PORT MAP(	clk		    =>	clk,
-						ena		    =>	ena,
-						rst		    =>	rst,
-				      columna_0    =>	juego(0),
-						columna_1    =>	juego(1),
-						columna_2    =>	juego(2),
-						columna_3    =>	juego(3),
-						columna_4    =>	juego(4),
-						columna_5    =>	juego(5),
-						columna_6    =>	juego(6),
-						columna_7    =>	juego(7),
-						Columna      =>	Columnas_matriz1,
-						Fila         =>	Filas_matriz1);
-	
-	
-	Matriz_2: ENTITY work.Visualization
-		PORT MAP(	clk		    =>	clk,
-						ena		    =>	ena,
-						rst		    =>   rst,
-						columna_0    =>	juego(8),
-						columna_1    =>	juego(9),
-						columna_2    =>	juego(10),
-						columna_3    =>	juego(11),
-						columna_4    =>	juego(12),
-						columna_5    =>	juego(13),
-						columna_6    =>	juego(14),
-						columna_7    =>	juego(15),
-						Columna      =>	Columnas_matriz2,
-						Fila         =>	Filas_matriz2);
-	
-	
-	
-	Racquet1: ENTITY work.Racquets_Movement1
-		PORT MAP (	clk		=>	clk,
-						rst		=>	rst,
-						ena      => ena,
-						up       => up_J1,
-						down     => down_J1,
-						Rac_Pos  => Rac1_Pos);
-						
-	
-	
-	Racquet2: ENTITY work.Racquets_Movement1
-		PORT MAP (	clk		=>	clk,
-						rst		=>	rst,
-						ena      => ena,
-						up       => up_J2,
-						down     => down_J2,
-						Rac_Pos  => Rac2_Pos);
-	
-	
-   Score:    ENTITY work.Score
-	PORT MAP (		clk		=>	clk,
-						rst		=>	rst,
-						Goal_1	=> Goal_1,
-						Goal_2   => Goal_2,
-					marcador1   => marcador1_bin,
-				   marcador2   => marcador2_bin);	
-						
-	
-	
-	bin_to_sseg_1: ENTITY work.bin_to_sseg
-	PORT MAP (		bin  => marcador1_bin,
-						sseg => score1);
-						
-	
-	
-	bin_to_sseg_2: ENTITY work.bin_to_sseg
-	PORT MAP (		bin  => marcador2_bin,
-						sseg => score2);				
-						
-		
-		timer_for_speed: ENTITY work.univ_bin_counter
-	GENERIC MAP(	N 			=> 28)
-	PORT MAP (		clk		=>	clk,
-						rst		=>	rst,
-						ena		=>	ena,
-						syn_clr	=>	'0',
-						load		=>	'0',
-						d			=> "0101111101011110000100000000",
-						max_tick => tick_speed);
-
-ZEROS	<=( 
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111",
-"11111111");		
-		
-		
-		PROCESS(rst,ena,clk,clk_tablero,ZEROS)
-			BEGIN
-				IF(rst='1') THEN
-					juego <= ZEROS;
-				ELSIF(rising_edge(clk)) THEN
-					IF(clk_tablero = '1') THEN
-						pr_state <= nx_state;
-						juego <= game;
-					END IF;
-				END IF;
-			END PROCESS;
-
-	
-	PROCESS (pr_state,Rac1_Pos,Rac2_Pos,juego,Position_Ballx,Position_Bally,ZEROS)
+	PROCESS(rst,clk)
 		BEGIN
-			CASE pr_state IS
-				WHEN Initial =>
-					game <= ZEROS;
-					nx_state<= Desarrollo;
-				WHEN Desarrollo =>
-					game <=(OTHERS => "11111111");
-					game(0) <=  Rac1_Pos;
-					game(15)<=  Rac2_Pos;
-					game(Position_Ballx)(Position_Bally) <= '1';
-					nx_state <= Initial;
-			END CASE;
-		END PROCESS;		
-
-
+			IF (rst = '1') THEN
+				pr_state	<=	state0;
+			ELSIF (rising_edge(clk)) THEN
+				IF (clk_visualization = '1' ) THEN
+					pr_state	<=	nx_state;
+				END IF;
+			END IF;
+	END PROCESS;
+	
+	PROCESS(pr_state)
+	BEGIN
+		CASE pr_state IS
+			WHEN state0 => 
+			      	Fila        <= columna_0;
+	               Columna     <= "10000000";
+						nx_state		<=	state1;
+			WHEN state1 => 
+			      	Fila        <= columna_1;
+	               Columna     <= "01000000";
+						nx_state		<=	state2;
+			WHEN state2 => 
+			      	Fila        <= columna_2;
+	               Columna     <= "00100000";
+						nx_state		<=	state3;
+			WHEN state3 => 
+			      	Fila        <= columna_3;
+	               Columna     <= "00010000";
+						nx_state		<= state4;
+			WHEN state4 => 
+			      	Fila        <= columna_4;
+	               Columna     <= "00001000";
+						nx_state		<= state5;
+			WHEN state5 => 
+			      	Fila        <= columna_5;
+	               Columna     <= "00000100";
+						nx_state		<= state6;
+			WHEN state6 => 
+			      	Fila        <= columna_6;
+	               Columna     <= "00000010";
+						nx_state		<= state7;
+			WHEN state7 => 
+			      	Fila        <= columna_7;
+	               Columna     <= "00000001";
+						nx_state		<= state0;
+		END CASE;
+	END PROCESS;
 END ARCHITECTURE;
